@@ -85,7 +85,7 @@ resource "aws_workspaces_workspace" "workspaces" {
   user_name                      = each.key
   root_volume_encryption_enabled = var.root_volume_encryption_enabled
   user_volume_encryption_enabled = var.user_volume_encryption_enabled
-  volume_encryption_key          = var.create_volume_encryption_key ? aws_kms_key.workspaces_kms[0].arn : ""
+  volume_encryption_key          = var.create_volume_encryption_key ? aws_kms_key.workspaces_kms[*].arn : ""
 
   dynamic "workspace_properties" {
     for_each = var.workspace_properties[*]
