@@ -87,6 +87,6 @@ variable "workspace_properties" {
     running_mode                              = optional(string)
     running_mode_auto_stop_timeout_in_minutes = optional(number)
   }))
-  
+
   default = {}
 }
