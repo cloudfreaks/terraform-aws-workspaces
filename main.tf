@@ -2,47 +2,47 @@ data "aws_iam_policy_document" "workspaces" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = ["workspaces.amazonaws.com"]
     }
   }
 }
 
 resource "aws_iam_role" "workspaces_defaultrole" {
-  name               = "workspaces_DefaultRole"
+  name = "workspaces_DefaultRole"
   assume_role_policy = data.aws_iam_policy_document.workspaces.json
 }
 
 resource "aws_iam_role_policy_attachment" "ws_service_access" {
-  role       = aws_iam_role.workspaces_defaultrole.name
+  role = aws_iam_role.workspaces_defaultrole.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonWorkSpacesServiceAccess"
 }
 
 resource "aws_iam_role_policy_attachment" "ws_selfservice_access" {
-  role       = aws_iam_role.workspaces_defaultrole.name
+  role = aws_iam_role.workspaces_defaultrole.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonWorkSpacesSelfServiceAccess"
 }
 
 resource "aws_kms_key" "workspaces_kms" {
-  count                   = var.create_volume_encryption_key ? 1 : 0
-  description             = "Workspaces KMS"
+  count = var.create_volume_encryption_key ? 1 : 0
+  description = "Workspaces KMS"
   deletion_window_in_days = 7
-  tags                    = module.this.tags
+  tags = module.this.tags
 }
 
 resource "aws_kms_alias" "workspaces_kms_alias" {
-  count         = var.create_volume_encryption_key ? 1 : 0
+  count = var.create_volume_encryption_key ? 1 : 0
   name          = "alias/gc/workspaces"
-  target_key_id = aws_kms_key.workspaces_kms[*].key_id
+  target_key_id = join("", aws_kms_key.workspaces_kms[*].key_id)
 }
 
 locals {
-  users_bundles = length(var.directory_user_names) == length(var.bundle_ids) ? zipmap(var.directory_user_names, var.bundle_ids) : zipmap(var.directory_user_names, [for s in var.directory_user_names : var.bundle_ids[0]])
+  users_bundles = length(var.directory_user_names) == length(var.bundle_ids)? zipmap(var.directory_user_names, var.bundle_ids) : zipmap(var.directory_user_names, [for s in var.directory_user_names : var.bundle_ids[0]])
 }
 
 resource "aws_workspaces_directory" "ws_directory" {
   directory_id = var.directory_id
-  subnet_ids   = var.workspaces_subnet_ids
+  subnet_ids = var.workspaces_subnet_ids
 
   tags = module.this.tags
 
@@ -80,12 +80,12 @@ resource "aws_workspaces_directory" "ws_directory" {
 resource "aws_workspaces_workspace" "workspaces" {
   for_each = local.users_bundles
 
-  directory_id                   = var.directory_id
-  bundle_id                      = each.value
-  user_name                      = each.key
+  directory_id = var.directory_id
+  bundle_id = each.value
+  user_name = each.key
   root_volume_encryption_enabled = var.root_volume_encryption_enabled
   user_volume_encryption_enabled = var.user_volume_encryption_enabled
-  volume_encryption_key          = var.create_volume_encryption_key ? aws_kms_key.workspaces_kms[*].arn : ""
+  volume_encryption_key = var.create_volume_encryption_key ? join("", aws_kms_key.workspaces_kms[0].arn) : ""
 
   dynamic "workspace_properties" {
     for_each = var.workspace_properties[*]
@@ -97,12 +97,12 @@ resource "aws_workspaces_workspace" "workspaces" {
       running_mode_auto_stop_timeout_in_minutes = try(workspace_properties.value[each.key].running_mode_auto_stop_timeout_in_minutes, 60)
     }
   }
-
+  
   tags = merge(
     module.this.tags,
     {
       ldap_owner = each.key
-      bundle     = each.value
+      bundle = each.value
     },
   )
 
